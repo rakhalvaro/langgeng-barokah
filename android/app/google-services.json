@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "716581777197",
+    "project_id": "berkah-telor",
+    "storage_bucket": "berkah-telor.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:716581777197:android:e37d531c06dea19358ada4",
+        "android_client_info": {
+          "package_name": "com.example.berkah_telor"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlkRMA3MQyOi0r0RJ_RGVzYguiry_XyIg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
