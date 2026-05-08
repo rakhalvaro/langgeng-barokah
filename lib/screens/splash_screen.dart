@@ -73,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Berkah Telor',
+              'Langgeng Barokah',
               style: GoogleFonts.poppins(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -82,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             Text(
-              'Pencatatan Usaha Telor Ayam',
+              'Pencatatan Usaha Ayam Petelur',
               style: GoogleFonts.poppins(
                 fontSize: 13,
                 color: Colors.white.withOpacity(0.75),

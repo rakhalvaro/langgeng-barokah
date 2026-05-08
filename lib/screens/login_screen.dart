@@ -116,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Nama app
                 Text(
-                  'Berkah Telor',
+                  'Langgeng Barokah',
                   style: GoogleFonts.poppins(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Tagline
                 Text(
-                  'Pencatatan Usaha Telor Ayam',
+                  'Pencatatan Usaha Ayam Petelur',
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     color: Colors.white.withOpacity(0.75),

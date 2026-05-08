@@ -34,35 +34,34 @@ class _StockScreenState extends State<StockScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
+  Future<double> _getSoldKgForDate(DateTime date) async {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+    final snap = await _firestore
+        .collection('orders')
+        .where('dateTime', isGreaterThanOrEqualTo: start.toIso8601String())
+        .where('dateTime', isLessThan: end.toIso8601String())
+        .get();
+    double total = 0.0;
+    for (final doc in snap.docs) {
+      total += ((doc.data()['kg'] ?? 0) as num).toDouble();
+    }
+    return total;
+  }
+
   Future<double> _getYesterdayLeftover() async {
     final now = DateTime.now();
     final yesterday = now.subtract(const Duration(days: 1));
     final yId =
         '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
 
-    final stockDoc = await _firestore.collection('daily_stocks').doc(yId).get();
+    final stockDoc =
+        await _firestore.collection('daily_stocks').doc(yId).get();
     if (!stockDoc.exists) return 0;
 
     final stock = DailyStock.fromMap(stockDoc.id, stockDoc.data()!);
-    final totalIn = stock.totalAvailable;
-
-    final ordersSnap = await _firestore
-        .collection('orders')
-        .where('dateTime',
-            isGreaterThanOrEqualTo:
-                DateTime(yesterday.year, yesterday.month, yesterday.day)
-                    .toIso8601String())
-        .where('dateTime',
-            isLessThan:
-                DateTime(now.year, now.month, now.day).toIso8601String())
-        .get();
-
-    double sold = ordersSnap.docs.fold(0.0, (sum, doc) {
-      final data = doc.data();
-      return sum + (data['kg'] ?? 0).toDouble();
-    });
-
-    final leftover = totalIn - sold;
+    final soldKg = await _getSoldKgForDate(yesterday);
+    final leftover = stock.totalAvailable - soldKg;
     return leftover < 0 ? 0 : leftover;
   }
 
@@ -96,7 +95,8 @@ class _StockScreenState extends State<StockScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(isEdit ? Icons.edit : Icons.add_circle,
@@ -106,7 +106,9 @@ class _StockScreenState extends State<StockScreen> {
               child: Text(
                 '${isEdit ? 'Edit' : 'Input'} Panen $sessionLabel',
                 style: GoogleFonts.poppins(
-                    fontSize: 15, fontWeight: FontWeight.bold, color: kDark),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: kDark),
               ),
             ),
           ],
@@ -116,7 +118,8 @@ class _StockScreenState extends State<StockScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: kBg,
                 borderRadius: BorderRadius.circular(8),
@@ -154,8 +157,8 @@ class _StockScreenState extends State<StockScreen> {
                 hintText: '0.0',
                 suffixText: 'kg',
                 prefixIcon: Icon(sessionIcon, color: kAccent),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: kPrimary, width: 2),
@@ -183,24 +186,17 @@ class _StockScreenState extends State<StockScreen> {
               final docId = existing?.id ?? _todayId();
               final existingMorning = existing?.morningKg ?? 0;
               final existingAfternoon = existing?.afternoonKg ?? 0;
-              final existingSoldKg = existing != null
-                  ? (((await _firestore
-                                  .collection('daily_stocks')
-                                  .doc(docId)
-                                  .get())
-                              .data()?['soldKg'] ??
-                          0) as num)
-                      .toDouble()
-                  : 0.0;
 
-              await _firestore.collection('daily_stocks').doc(docId).set({
+              await _firestore
+                  .collection('daily_stocks')
+                  .doc(docId)
+                  .set({
                 'date': existing?.date.toIso8601String() ??
                     DateTime.now().toIso8601String(),
                 'morningKg': isMorning ? kg : existingMorning,
                 'afternoonKg': isMorning ? existingAfternoon : kg,
                 'previousLeftover': leftover,
-                'soldKg': existingSoldKg,
-              });
+              }, SetOptions(merge: true));
 
               if (mounted) Navigator.pop(ctx);
             },
@@ -231,28 +227,21 @@ class _StockScreenState extends State<StockScreen> {
 
           final docs = snapshot.data!.docs;
           final stocks = docs
-              .map((d) =>
-                  DailyStock.fromMap(d.id, d.data() as Map<String, dynamic>))
+              .map((d) => DailyStock.fromMap(
+                  d.id, d.data() as Map<String, dynamic>))
               .toList();
 
           final todayId = _todayId();
-          final todayDoc = docs.where((d) => d.id == todayId).firstOrNull;
-          final todayStock = stocks.where((s) => s.id == todayId).firstOrNull;
-
-          double todaySoldKg = 0;
-          if (todayDoc != null) {
-            final rawData = todayDoc.data() as Map<String, dynamic>;
-            todaySoldKg = ((rawData['soldKg'] ?? 0) as num).toDouble();
-          }
+          final todayStock =
+              stocks.where((s) => s.id == todayId).firstOrNull;
 
           return CustomScrollView(
             slivers: [
-              SliverToBoxAdapter(
-                  child: _buildTodayCard(todayStock, todaySoldKg)),
+              SliverToBoxAdapter(child: _buildTodayCard(todayStock)),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
                   child: Text(
                     'Riwayat Stok',
                     style: GoogleFonts.poppins(
@@ -266,13 +255,7 @@ class _StockScreenState extends State<StockScreen> {
                   ? SliverToBoxAdapter(child: _emptyState())
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) {
-                          final rawData =
-                              docs[i].data() as Map<String, dynamic>;
-                          final soldKg =
-                              ((rawData['soldKg'] ?? 0) as num).toDouble();
-                          return _buildHistoryCard(stocks[i], soldKg);
-                        },
+                        (ctx, i) => _buildHistoryCard(stocks[i]),
                         childCount: stocks.length,
                       ),
                     ),
@@ -284,12 +267,10 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  Widget _buildTodayCard(DailyStock? stock, double soldKg) {
+  Widget _buildTodayCard(DailyStock? stock) {
     final now = DateTime.now();
     final hasMorning = (stock?.morningKg ?? 0) > 0;
     final hasAfternoon = (stock?.afternoonKg ?? 0) > 0;
-    final totalAvailable = stock?.totalAvailable ?? 0;
-    final remaining = (totalAvailable - soldKg).clamp(0.0, double.infinity);
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -305,16 +286,14 @@ class _StockScreenState extends State<StockScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Hari Ini',
-                  style:
-                      GoogleFonts.poppins(color: Colors.white70, fontSize: 13)),
+                  style: GoogleFonts.poppins(
+                      color: Colors.white70, fontSize: 13)),
               Text(_dateLabel(now),
-                  style:
-                      GoogleFonts.poppins(color: Colors.white70, fontSize: 13)),
+                  style: GoogleFonts.poppins(
+                      color: Colors.white70, fontSize: 13)),
             ],
           ),
           const SizedBox(height: 14),
-
-          // Tombol Input/Edit Pagi & Sore
           Row(
             children: [
               Expanded(
@@ -338,154 +317,161 @@ class _StockScreenState extends State<StockScreen> {
               ),
             ],
           ),
-
           if (stock != null) ...[
             const SizedBox(height: 14),
-
-            // Mini stat pagi & sore
             Row(
               children: [
                 Expanded(
-                    child: _buildMiniStat(
-                        Icons.wb_sunny_outlined, 'Pagi',
+                    child: _buildMiniStat(Icons.wb_sunny_outlined, 'Pagi',
                         _formatKg(stock.morningKg))),
                 const SizedBox(width: 10),
                 Expanded(
-                    child: _buildMiniStat(
-                        Icons.wb_twilight, 'Sore',
+                    child: _buildMiniStat(Icons.wb_twilight, 'Sore',
                         _formatKg(stock.afternoonKg))),
               ],
             ),
             const SizedBox(height: 10),
+            FutureBuilder<double>(
+              future: _getSoldKgForDate(now),
+              builder: (context, snap) {
+                final soldKg = snap.data ?? 0;
+                final totalAvailable = stock.totalAvailable;
+                final remaining =
+                    (totalAvailable - soldKg).clamp(0.0, double.infinity);
 
-            // Summary box
-            Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                children: [
-                  Row(
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 12, horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Sisa Kemarin',
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white70, fontSize: 11)),
-                            Text(_formatKg(stock.previousLeftover),
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.add, color: Colors.white54, size: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('Masuk Hari Ini',
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white70, fontSize: 11)),
-                            Text(_formatKg(stock.totalIn),
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(
-                        color: Colors.white.withOpacity(0.3), height: 1),
-                  ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Total Tersedia',
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white70, fontSize: 11)),
-                            Text(_formatKg(totalAvailable.toDouble()),
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.remove, color: Colors.white54, size: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('Terjual',
-                                style: GoogleFonts.poppins(
-                                    color: Colors.white70, fontSize: 11)),
-                            Text(_formatKg(soldKg),
-                                style: GoogleFonts.poppins(
-                                    color: soldKg > 0
-                                        ? Colors.orangeAccent
-                                        : Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(
-                        color: Colors.white.withOpacity(0.3), height: 1),
-                  ),
-                  Column(
-                    children: [
-                      Text('Sisa Stok',
-                          style: GoogleFonts.poppins(
-                              color: Colors.white70, fontSize: 12)),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatKg(remaining),
-                        style: GoogleFonts.poppins(
-                          color: remaining <= 0
-                              ? Colors.redAccent[100]
-                              : Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (remaining <= 0)
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Sisa Kemarin',
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text(_formatKg(stock.previousLeftover),
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
                           ),
-                          child: Text('Stok Habis',
+                          const Icon(Icons.add,
+                              color: Colors.white54, size: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('Masuk Hari Ini',
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text(_formatKg(stock.totalIn),
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(
+                            color: Colors.white.withOpacity(0.3),
+                            height: 1),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Total Tersedia',
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text(_formatKg(totalAvailable.toDouble()),
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.remove,
+                              color: Colors.white54, size: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text('Terjual',
+                                    style: GoogleFonts.poppins(
+                                        color: Colors.white70, fontSize: 11)),
+                                Text(_formatKg(soldKg),
+                                    style: GoogleFonts.poppins(
+                                        color: soldKg > 0
+                                            ? Colors.orangeAccent
+                                            : Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Divider(
+                            color: Colors.white.withOpacity(0.3),
+                            height: 1),
+                      ),
+                      Column(
+                        children: [
+                          Text('Sisa Stok',
                               style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600)),
-                        ),
+                                  color: Colors.white70, fontSize: 12)),
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatKg(remaining),
+                            style: GoogleFonts.poppins(
+                              color: remaining <= 0
+                                  ? Colors.redAccent[100]
+                                  : Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (remaining <= 0)
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text('Stok Habis',
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             ),
           ] else ...[
             const SizedBox(height: 10),
@@ -516,20 +502,23 @@ class _StockScreenState extends State<StockScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        padding:
+            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
           color: isEdit
               ? Colors.white.withOpacity(0.25)
               : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(10),
           border: isEdit
-              ? Border.all(color: Colors.white.withOpacity(0.5), width: 1)
+              ? Border.all(
+                  color: Colors.white.withOpacity(0.5), width: 1)
               : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isEdit ? Icons.edit : icon, color: Colors.white, size: 16),
+            Icon(isEdit ? Icons.edit : icon,
+                color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(label,
                 style: GoogleFonts.poppins(
@@ -557,8 +546,8 @@ class _StockScreenState extends State<StockScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style:
-                      GoogleFonts.poppins(color: Colors.white70, fontSize: 11)),
+                  style: GoogleFonts.poppins(
+                      color: Colors.white70, fontSize: 11)),
               Text(value,
                   style: GoogleFonts.poppins(
                       color: Colors.white,
@@ -571,88 +560,196 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  Widget _buildHistoryCard(DailyStock stock, double soldKg) {
-    final totalAvailable = stock.totalAvailable;
-    final remaining = (totalAvailable - soldKg).clamp(0.0, double.infinity);
+  // ─── History Card: 3 chip ───────────────────────────────────────────────────
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 0,
-      color: kBg,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildHistoryCard(DailyStock stock) {
+    return FutureBuilder<double>(
+      future: _getSoldKgForDate(stock.date),
+      builder: (context, snap) {
+        final soldKg = snap.data ?? 0;
+        final remaining =
+            (stock.totalAvailable - soldKg).clamp(0.0, double.infinity);
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          elevation: 0,
+          color: kBg,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_dateLabel(stock.date),
-                    style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: kDark)),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: kPrimary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('Sisa: ${_formatKg(remaining)}',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_dateLabel(stock.date),
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: kDark)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: kPrimary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text('Sisa: ${_formatKg(remaining)}',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    // Chip 1 — Sisa Kemarin
+                    _historyChipSingle(
+                      Icons.history,
+                      'Sisa Kemarin',
+                      _formatKg(stock.previousLeftover),
+                    ),
+                    const SizedBox(width: 7),
+                    // Chip 2 — Panen Hari Ini (pagi | sore | total)
+                    _historyChipPanen(
+                      _formatKg(stock.morningKg),
+                      _formatKg(stock.afternoonKg),
+                      _formatKg(stock.totalIn),
+                    ),
+                    const SizedBox(width: 7),
+                    // Chip 3 — Terjual
+                    _historyChipSingle(
+                      Icons.local_shipping_outlined,
+                      'Terjual',
+                      snap.connectionState == ConnectionState.done
+                          ? _formatKg(soldKg)
+                          : '...',
+                      valueColor: soldKg > 0 ? Colors.orange[700] : null,
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                _historyChip(Icons.wb_sunny_outlined, 'Pagi',
-                    _formatKg(stock.morningKg)),
-                const SizedBox(width: 8),
-                _historyChip(Icons.wb_twilight, 'Sore',
-                    _formatKg(stock.afternoonKg)),
-                const SizedBox(width: 8),
-                _historyChip(
-                    Icons.local_shipping_outlined, 'Terjual', _formatKg(soldKg)),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _historyChip(IconData icon, String label, String value) {
+  /// Chip tunggal — Sisa Kemarin & Terjual
+  Widget _historyChipSingle(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFF9FE1CB)),
         ),
         child: Column(
           children: [
-            Icon(icon, size: 14, color: kAccent),
-            const SizedBox(height: 2),
-            Text(label,
-                style:
-                    GoogleFonts.poppins(fontSize: 9, color: Colors.grey[500])),
-            Text(value,
-                style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: kDark)),
+            Icon(icon, size: 20, color: kAccent),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                  fontSize: 11, color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: valueColor ?? kDark),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
     );
   }
+
+  /// Chip panen — Pagi + Sore berdampingan + total, flex:2 agar lebar
+  Widget _historyChipPanen(String pagi, String sore, String total) {
+    return Expanded(
+      flex: 2,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF9FE1CB)),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.egg_outlined, size: 20, color: kAccent),
+            const SizedBox(height: 6),
+            // Pagi + Sore berdampingan
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  children: [
+                    Text('Pagi',
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey[500])),
+                    Text(pagi,
+                        style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: kDark)),
+                  ],
+                ),
+                Text('+',
+                    style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: Colors.grey[400],
+                        fontWeight: FontWeight.w600)),
+                Column(
+                  children: [
+                    Text('Sore',
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey[500])),
+                    Text(sore,
+                        style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: kDark)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Divider(height: 1, color: const Color(0xFF9FE1CB)),
+            const SizedBox(height: 6),
+            // Total panen hari ini
+            Text('Total Panen',
+                style: GoogleFonts.poppins(
+                    fontSize: 11, color: Colors.grey[500])),
+            const SizedBox(height: 2),
+            Text(total,
+                style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: kPrimary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Empty state ────────────────────────────────────────────────────────────
 
   Widget _emptyState() {
     return Center(
@@ -662,10 +759,11 @@ class _StockScreenState extends State<StockScreen> {
           Icon(Icons.egg_outlined, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text('Belum ada data stok',
-              style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey)),
-          Text('Tap Input Pagi atau Input Sore untuk mulai!',
               style:
-                  GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400])),
+                  GoogleFonts.poppins(fontSize: 16, color: Colors.grey)),
+          Text('Tap Input Pagi atau Input Sore untuk mulai!',
+              style: GoogleFonts.poppins(
+                  fontSize: 13, color: Colors.grey[400])),
         ],
       ),
     );

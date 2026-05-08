@@ -58,7 +58,7 @@ class _MainScreenState extends State<MainScreen> {
               textAlign: TextAlign.center,
             ),
             Text(
-              'Berkah Telor',
+              'Langgeng Barokah',
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,

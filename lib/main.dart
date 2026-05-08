@@ -8,16 +8,16 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const BerkahTelorApp());
+  runApp(const LanggengBarokahApp());
 }
 
-class BerkahTelorApp extends StatelessWidget {
-  const BerkahTelorApp({super.key});
+class LanggengBarokahApp extends StatelessWidget {
+  const LanggengBarokahApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Berkah Telor',
+      title: 'Langgeng Barokah',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
