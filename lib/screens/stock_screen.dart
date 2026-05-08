@@ -16,6 +16,25 @@ class _StockScreenState extends State<StockScreen> {
   static const Color kBg = Color(0xFFE1F5EE);
   static const Color kDark = Color(0xFF085041);
 
+  // Filter state — default ke bulan & tahun sekarang
+  late int _selectedMonth;
+  late int _selectedYear;
+
+  static const List<String> _monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = now.month;
+    _selectedYear = now.year;
+  }
+
+  // ─── Helpers ────────────────────────────────────────────────────────────────
+
   String _todayId() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -54,16 +73,16 @@ class _StockScreenState extends State<StockScreen> {
     final yesterday = now.subtract(const Duration(days: 1));
     final yId =
         '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
-
     final stockDoc =
         await _firestore.collection('daily_stocks').doc(yId).get();
     if (!stockDoc.exists) return 0;
-
     final stock = DailyStock.fromMap(stockDoc.id, stockDoc.data()!);
     final soldKg = await _getSoldKgForDate(yesterday);
     final leftover = stock.totalAvailable - soldKg;
     return leftover < 0 ? 0 : leftover;
   }
+
+  // ─── Input dialog ────────────────────────────────────────────────────────────
 
   void _showInputDialog(
     BuildContext context, {
@@ -208,6 +227,8 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
+  // ─── Build ───────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -226,39 +247,86 @@ class _StockScreenState extends State<StockScreen> {
           }
 
           final docs = snapshot.data!.docs;
-          final stocks = docs
+          final allStocks = docs
               .map((d) => DailyStock.fromMap(
                   d.id, d.data() as Map<String, dynamic>))
               .toList();
 
           final todayId = _todayId();
           final todayStock =
-              stocks.where((s) => s.id == todayId).firstOrNull;
+              allStocks.where((s) => s.id == todayId).firstOrNull;
+
+          // Filter berdasarkan bulan & tahun yang dipilih
+          final filteredStocks = allStocks
+              .where((s) =>
+                  s.date.month == _selectedMonth &&
+                  s.date.year == _selectedYear)
+              .toList();
+
+          // Kumpulkan tahun yang ada di data untuk dropdown
+          final availableYears = allStocks
+              .map((s) => s.date.year)
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
+          if (!availableYears.contains(_selectedYear)) {
+            availableYears.add(_selectedYear);
+            availableYears.sort((a, b) => b.compareTo(a));
+          }
 
           return CustomScrollView(
             slivers: [
+              // Card hari ini
               SliverToBoxAdapter(child: _buildTodayCard(todayStock)),
+
+              // Header riwayat + dropdown filter
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  child: Text(
-                    'Riwayat Stok',
-                    style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: kDark),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Riwayat Stok',
+                        style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: kDark),
+                      ),
+                      const Spacer(),
+                      // Dropdown Bulan
+                      _buildDropdown<int>(
+                        value: _selectedMonth,
+                        items: List.generate(12, (i) => i + 1),
+                        labelBuilder: (m) => _monthNames[m - 1],
+                        onChanged: (v) =>
+                            setState(() => _selectedMonth = v!),
+                      ),
+                      const SizedBox(width: 8),
+                      // Dropdown Tahun
+                      _buildDropdown<int>(
+                        value: _selectedYear,
+                        items: availableYears,
+                        labelBuilder: (y) => y.toString(),
+                        onChanged: (v) =>
+                            setState(() => _selectedYear = v!),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              stocks.isEmpty
-                  ? SliverToBoxAdapter(child: _emptyState())
+
+              // List riwayat terfilter
+              filteredStocks.isEmpty
+                  ? SliverToBoxAdapter(
+                      child: _emptyFilterState(
+                          _monthNames[_selectedMonth - 1], _selectedYear))
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _buildHistoryCard(stocks[i]),
-                        childCount: stocks.length,
+                        (ctx, i) => _buildHistoryCard(filteredStocks[i]),
+                        childCount: filteredStocks.length,
                       ),
                     ),
+
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           );
@@ -266,6 +334,47 @@ class _StockScreenState extends State<StockScreen> {
       ),
     );
   }
+
+  // ─── Dropdown helper ─────────────────────────────────────────────────────────
+
+  Widget _buildDropdown<T>({
+    required T value,
+    required List<T> items,
+    required String Function(T) labelBuilder,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      decoration: BoxDecoration(
+        color: kBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF9FE1CB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isDense: true,
+          icon: const Icon(Icons.keyboard_arrow_down,
+              size: 18, color: kPrimary),
+          style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: kDark),
+          dropdownColor: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          items: items
+              .map((item) => DropdownMenuItem<T>(
+                    value: item,
+                    child: Text(labelBuilder(item)),
+                  ))
+              .toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  // ─── Today card ──────────────────────────────────────────────────────────────
 
   Widget _buildTodayCard(DailyStock? stock) {
     final now = DateTime.now();
@@ -357,7 +466,8 @@ class _StockScreenState extends State<StockScreen> {
                               children: [
                                 Text('Sisa Kemarin',
                                     style: GoogleFonts.poppins(
-                                        color: Colors.white70, fontSize: 11)),
+                                        color: Colors.white70,
+                                        fontSize: 11)),
                                 Text(_formatKg(stock.previousLeftover),
                                     style: GoogleFonts.poppins(
                                         color: Colors.white,
@@ -374,7 +484,8 @@ class _StockScreenState extends State<StockScreen> {
                               children: [
                                 Text('Masuk Hari Ini',
                                     style: GoogleFonts.poppins(
-                                        color: Colors.white70, fontSize: 11)),
+                                        color: Colors.white70,
+                                        fontSize: 11)),
                                 Text(_formatKg(stock.totalIn),
                                     style: GoogleFonts.poppins(
                                         color: Colors.white,
@@ -399,7 +510,8 @@ class _StockScreenState extends State<StockScreen> {
                               children: [
                                 Text('Total Tersedia',
                                     style: GoogleFonts.poppins(
-                                        color: Colors.white70, fontSize: 11)),
+                                        color: Colors.white70,
+                                        fontSize: 11)),
                                 Text(_formatKg(totalAvailable.toDouble()),
                                     style: GoogleFonts.poppins(
                                         color: Colors.white,
@@ -416,7 +528,8 @@ class _StockScreenState extends State<StockScreen> {
                               children: [
                                 Text('Terjual',
                                     style: GoogleFonts.poppins(
-                                        color: Colors.white70, fontSize: 11)),
+                                        color: Colors.white70,
+                                        fontSize: 11)),
                                 Text(_formatKg(soldKg),
                                     style: GoogleFonts.poppins(
                                         color: soldKg > 0
@@ -560,7 +673,7 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  // ─── History Card: 3 chip ───────────────────────────────────────────────────
+  // ─── History Card: 3 chip ────────────────────────────────────────────────────
 
   Widget _buildHistoryCard(DailyStock stock) {
     return FutureBuilder<double>(
@@ -680,7 +793,7 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  /// Chip panen — Pagi + Sore berdampingan + total, flex:2 agar lebar
+  /// Chip panen — Pagi + Sore + Total, flex:2
   Widget _historyChipPanen(String pagi, String sore, String total) {
     return Expanded(
       flex: 2,
@@ -695,7 +808,6 @@ class _StockScreenState extends State<StockScreen> {
           children: [
             Icon(Icons.egg_outlined, size: 20, color: kAccent),
             const SizedBox(height: 6),
-            // Pagi + Sore berdampingan
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -733,7 +845,6 @@ class _StockScreenState extends State<StockScreen> {
             const SizedBox(height: 6),
             Divider(height: 1, color: const Color(0xFF9FE1CB)),
             const SizedBox(height: 6),
-            // Total panen hari ini
             Text('Total Panen',
                 style: GoogleFonts.poppins(
                     fontSize: 11, color: Colors.grey[500])),
@@ -749,7 +860,28 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  // ─── Empty state ────────────────────────────────────────────────────────────
+  // ─── Empty states ────────────────────────────────────────────────────────────
+
+  /// Tampil ketika filter bulan+tahun tidak ada datanya
+  Widget _emptyFilterState(String bulan, int tahun) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(
+          children: [
+            Icon(Icons.search_off_rounded, size: 56, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            Text('Tidak ada data stok',
+                style: GoogleFonts.poppins(
+                    fontSize: 15, color: Colors.grey[600])),
+            Text('$bulan $tahun',
+                style: GoogleFonts.poppins(
+                    fontSize: 13, color: Colors.grey[400])),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _emptyState() {
     return Center(
@@ -759,8 +891,7 @@ class _StockScreenState extends State<StockScreen> {
           Icon(Icons.egg_outlined, size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text('Belum ada data stok',
-              style:
-                  GoogleFonts.poppins(fontSize: 16, color: Colors.grey)),
+              style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey)),
           Text('Tap Input Pagi atau Input Sore untuk mulai!',
               style: GoogleFonts.poppins(
                   fontSize: 13, color: Colors.grey[400])),
