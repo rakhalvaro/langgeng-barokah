@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 
 class StockScreen extends StatefulWidget {
+  final bool isReadOnly;
+  const StockScreen({super.key, this.isReadOnly = false});
+
   @override
   _StockScreenState createState() => _StockScreenState();
 }
@@ -16,7 +19,6 @@ class _StockScreenState extends State<StockScreen> {
   static const Color kBg = Color(0xFFE1F5EE);
   static const Color kDark = Color(0xFF085041);
 
-  // Filter state — default ke bulan & tahun sekarang
   late int _selectedMonth;
   late int _selectedYear;
 
@@ -82,13 +84,15 @@ class _StockScreenState extends State<StockScreen> {
     return leftover < 0 ? 0 : leftover;
   }
 
-  // ─── Input dialog ────────────────────────────────────────────────────────────
+  // ─── Input dialog (hanya untuk owner) ───────────────────────────────────────
 
   void _showInputDialog(
     BuildContext context, {
     required String session,
     DailyStock? existing,
   }) async {
+    if (widget.isReadOnly) return;
+
     final isMorning = session == 'morning';
 
     final kgCtrl = TextEditingController(
@@ -256,14 +260,12 @@ class _StockScreenState extends State<StockScreen> {
           final todayStock =
               allStocks.where((s) => s.id == todayId).firstOrNull;
 
-          // Filter berdasarkan bulan & tahun yang dipilih
           final filteredStocks = allStocks
               .where((s) =>
                   s.date.month == _selectedMonth &&
                   s.date.year == _selectedYear)
               .toList();
 
-          // Kumpulkan tahun yang ada di data untuk dropdown
           final availableYears = allStocks
               .map((s) => s.date.year)
               .toSet()
@@ -276,10 +278,7 @@ class _StockScreenState extends State<StockScreen> {
 
           return CustomScrollView(
             slivers: [
-              // Card hari ini
               SliverToBoxAdapter(child: _buildTodayCard(todayStock)),
-
-              // Header riwayat + dropdown filter
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -293,7 +292,6 @@ class _StockScreenState extends State<StockScreen> {
                             color: kDark),
                       ),
                       const Spacer(),
-                      // Dropdown Bulan
                       _buildDropdown<int>(
                         value: _selectedMonth,
                         items: List.generate(12, (i) => i + 1),
@@ -302,7 +300,6 @@ class _StockScreenState extends State<StockScreen> {
                             setState(() => _selectedMonth = v!),
                       ),
                       const SizedBox(width: 8),
-                      // Dropdown Tahun
                       _buildDropdown<int>(
                         value: _selectedYear,
                         items: availableYears,
@@ -314,8 +311,6 @@ class _StockScreenState extends State<StockScreen> {
                   ),
                 ),
               ),
-
-              // List riwayat terfilter
               filteredStocks.isEmpty
                   ? SliverToBoxAdapter(
                       child: _emptyFilterState(
@@ -326,7 +321,6 @@ class _StockScreenState extends State<StockScreen> {
                         childCount: filteredStocks.length,
                       ),
                     ),
-
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           );
@@ -397,35 +391,72 @@ class _StockScreenState extends State<StockScreen> {
               Text('Hari Ini',
                   style: GoogleFonts.poppins(
                       color: Colors.white70, fontSize: 13)),
-              Text(_dateLabel(now),
-                  style: GoogleFonts.poppins(
-                      color: Colors.white70, fontSize: 13)),
+              Row(
+                children: [
+                  Text(_dateLabel(now),
+                      style: GoogleFonts.poppins(
+                          color: Colors.white70, fontSize: 13)),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildSessionButton(
-                  icon: Icons.wb_sunny_outlined,
-                  label: hasMorning ? 'Edit Pagi' : 'Input Pagi',
-                  isEdit: hasMorning,
-                  onTap: () => _showInputDialog(context,
-                      session: 'morning', existing: stock),
+
+          // Tombol input/edit HANYA untuk owner
+          if (!widget.isReadOnly) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSessionButton(
+                    icon: Icons.wb_sunny_outlined,
+                    label: hasMorning ? 'Edit Pagi' : 'Input Pagi',
+                    isEdit: hasMorning,
+                    onTap: () => _showInputDialog(context,
+                        session: 'morning', existing: stock),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildSessionButton(
-                  icon: Icons.wb_twilight,
-                  label: hasAfternoon ? 'Edit Sore' : 'Input Sore',
-                  isEdit: hasAfternoon,
-                  onTap: () => _showInputDialog(context,
-                      session: 'afternoon', existing: stock),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildSessionButton(
+                    icon: Icons.wb_twilight,
+                    label: hasAfternoon ? 'Edit Sore' : 'Input Sore',
+                    isEdit: hasAfternoon,
+                    onTap: () => _showInputDialog(context,
+                        session: 'afternoon', existing: stock),
+                  ),
                 ),
+              ],
+            ),
+          ] else ...[
+            // Investor: tampilkan info status saja tanpa tombol
+            Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                    color: Colors.white.withOpacity(0.2), width: 1),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.info_outline,
+                      color: Colors.white60, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    hasMorning || hasAfternoon
+                        ? 'Data stok hari ini sudah diinput'
+                        : 'Belum ada data stok hari ini',
+                    style: GoogleFonts.poppins(
+                        color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           if (stock != null) ...[
             const SizedBox(height: 14),
             Row(
@@ -673,7 +704,7 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  // ─── History Card: 3 chip ────────────────────────────────────────────────────
+  // ─── History Card ────────────────────────────────────────────────────────────
 
   Widget _buildHistoryCard(DailyStock stock) {
     return FutureBuilder<double>(
@@ -720,21 +751,18 @@ class _StockScreenState extends State<StockScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    // Chip 1 — Sisa Kemarin
                     _historyChipSingle(
                       Icons.history,
                       'Sisa Kemarin',
                       _formatKg(stock.previousLeftover),
                     ),
                     const SizedBox(width: 7),
-                    // Chip 2 — Panen Hari Ini (pagi | sore | total)
                     _historyChipPanen(
                       _formatKg(stock.morningKg),
                       _formatKg(stock.afternoonKg),
                       _formatKg(stock.totalIn),
                     ),
                     const SizedBox(width: 7),
-                    // Chip 3 — Terjual
                     _historyChipSingle(
                       Icons.local_shipping_outlined,
                       'Terjual',
@@ -753,7 +781,6 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  /// Chip tunggal — Sisa Kemarin & Terjual
   Widget _historyChipSingle(
     IconData icon,
     String label,
@@ -793,7 +820,6 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  /// Chip panen — Pagi + Sore + Total, flex:2
   Widget _historyChipPanen(String pagi, String sore, String total) {
     return Expanded(
       flex: 2,
@@ -862,7 +888,6 @@ class _StockScreenState extends State<StockScreen> {
 
   // ─── Empty states ────────────────────────────────────────────────────────────
 
-  /// Tampil ketika filter bulan+tahun tidak ada datanya
   Widget _emptyFilterState(String bulan, int tahun) {
     return Center(
       child: Padding(
@@ -879,23 +904,6 @@ class _StockScreenState extends State<StockScreen> {
                     fontSize: 13, color: Colors.grey[400])),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _emptyState() {
-    return Center(
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          Icon(Icons.egg_outlined, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text('Belum ada data stok',
-              style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey)),
-          Text('Tap Input Pagi atau Input Sore untuk mulai!',
-              style: GoogleFonts.poppins(
-                  fontSize: 13, color: Colors.grey[400])),
-        ],
       ),
     );
   }

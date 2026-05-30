@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 
 class ExpenseScreen extends StatefulWidget {
+  final bool isReadOnly;
+  const ExpenseScreen({super.key, this.isReadOnly = false});
+
   @override
   _ExpenseScreenState createState() => _ExpenseScreenState();
 }
@@ -20,10 +23,30 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   DateTime _selectedDate = DateTime.now();
 
   static const List<Map<String, dynamic>> kCategories = [
-    {'key': 'pakan', 'label': 'Pakan', 'icon': Icons.grass_outlined, 'color': Color(0xFF4CAF50)},
-    {'key': 'obat', 'label': 'Obat & Vitamin', 'icon': Icons.medication_outlined, 'color': Color(0xFF2196F3)},
-    {'key': 'operasional', 'label': 'Operasional', 'icon': Icons.build_outlined, 'color': Color(0xFFFF9800)},
-    {'key': 'lainnya', 'label': 'Lainnya', 'icon': Icons.more_horiz, 'color': Color(0xFF9E9E9E)},
+    {
+      'key': 'pakan',
+      'label': 'Pakan',
+      'icon': Icons.grass_outlined,
+      'color': Color(0xFF4CAF50)
+    },
+    {
+      'key': 'obat',
+      'label': 'Obat & Vitamin',
+      'icon': Icons.medication_outlined,
+      'color': Color(0xFF2196F3)
+    },
+    {
+      'key': 'operasional',
+      'label': 'Operasional',
+      'icon': Icons.build_outlined,
+      'color': Color(0xFFFF9800)
+    },
+    {
+      'key': 'lainnya',
+      'label': 'Lainnya',
+      'icon': Icons.more_horiz,
+      'color': Color(0xFF9E9E9E)
+    },
   ];
 
   String _formatCurrency(double amount) {
@@ -44,12 +67,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     DateTime startDate, endDate;
     switch (_selectedPeriod) {
       case 'Harian':
-        startDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+        startDate = DateTime(
+            _selectedDate.year, _selectedDate.month, _selectedDate.day);
         endDate = startDate.add(const Duration(days: 1));
         break;
       case 'Bulanan':
-        startDate = DateTime(_selectedDate.year, _selectedDate.month, 1);
-        endDate = DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
+        startDate =
+            DateTime(_selectedDate.year, _selectedDate.month, 1);
+        endDate =
+            DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
         break;
       case 'Tahunan':
         startDate = DateTime(_selectedDate.year, 1, 1);
@@ -67,7 +93,10 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       case 'Harian':
         return '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}';
       case 'Bulanan':
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const months = [
+          'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+          'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+        ];
         return '${months[_selectedDate.month - 1]} ${_selectedDate.year}';
       case 'Tahunan':
         return '${_selectedDate.year}';
@@ -105,33 +134,37 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     }
   }
 
-  // ✅ Konfirmasi hapus dengan swipe — fix overflow, pakai Flexible
+  // ─── Konfirmasi hapus (hanya owner) ─────────────────────────────────────────
+
   Future<bool?> _confirmDelete(BuildContext context, String description) {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             const Icon(Icons.delete_outline, color: Colors.red, size: 22),
             const SizedBox(width: 8),
-            // ✅ Flexible supaya tidak overflow
             Flexible(
               child: Text(
                 'Hapus Pengeluaran',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: kDark),
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold, color: kDark),
               ),
             ),
           ],
         ),
         content: RichText(
           text: TextSpan(
-            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
+            style:
+                GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
             children: [
               const TextSpan(text: 'Hapus catatan '),
               TextSpan(
                 text: '"$description"',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.black),
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold, color: Colors.black),
               ),
               const TextSpan(text: '?\n\nData tidak bisa dikembalikan.'),
             ],
@@ -140,16 +173,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey[600])),
+            child: Text('Batal',
+                style: GoogleFonts.poppins(color: Colors.grey[600])),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.delete_forever, size: 18),
-            label: Text('Hapus', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            label: Text('Hapus',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red[500],
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ],
@@ -157,7 +193,11 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
+  // ─── Add expense dialog (hanya owner) ───────────────────────────────────────
+
   void _showAddExpenseDialog(BuildContext context) {
+    if (widget.isReadOnly) return;
+
     String selectedCategory = 'pakan';
     final descCtrl = TextEditingController();
     final amountCtrl = TextEditingController();
@@ -167,7 +207,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
                 const Icon(Icons.add_card, color: kPrimary, size: 22),
@@ -175,7 +216,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 Text(
                   'Catat Pengeluaran',
                   style: GoogleFonts.poppins(
-                      fontSize: 16, fontWeight: FontWeight.bold, color: kDark),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: kDark),
                 ),
               ],
             ),
@@ -187,7 +230,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   Text(
                     'Kategori',
                     style: GoogleFonts.poppins(
-                        fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -197,15 +242,21 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       final isSelected = selectedCategory == cat['key'];
                       final color = cat['color'] as Color;
                       return GestureDetector(
-                        onTap: () => setDialog(() => selectedCategory = cat['key']),
+                        onTap: () =>
+                            setDialog(() => selectedCategory = cat['key']),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? color.withOpacity(0.15) : Colors.grey[100],
+                            color: isSelected
+                                ? color.withOpacity(0.15)
+                                : Colors.grey[100],
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isSelected ? color : Colors.transparent,
+                              color: isSelected
+                                  ? color
+                                  : Colors.transparent,
                               width: 1.5,
                             ),
                           ),
@@ -213,14 +264,21 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(cat['icon'] as IconData,
-                                  size: 14, color: isSelected ? color : Colors.grey[500]),
+                                  size: 14,
+                                  color: isSelected
+                                      ? color
+                                      : Colors.grey[500]),
                               const SizedBox(width: 5),
                               Text(
                                 cat['label'],
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                                  color: isSelected ? color : Colors.grey[600],
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                  color: isSelected
+                                      ? color
+                                      : Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -236,11 +294,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     decoration: InputDecoration(
                       labelText: 'Keterangan',
                       hintText: 'Contoh: Pakan 50 kg dari toko X',
-                      prefixIcon: const Icon(Icons.notes, color: kAccent),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon:
+                          const Icon(Icons.notes, color: kAccent),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: kPrimary, width: 2),
+                        borderSide:
+                            const BorderSide(color: kPrimary, width: 2),
                       ),
                     ),
                   ),
@@ -252,11 +313,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     decoration: InputDecoration(
                       labelText: 'Nominal',
                       prefixText: 'Rp ',
-                      prefixIcon: const Icon(Icons.attach_money, color: kAccent),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon:
+                          const Icon(Icons.attach_money, color: kAccent),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: kPrimary, width: 2),
+                        borderSide:
+                            const BorderSide(color: kPrimary, width: 2),
                       ),
                     ),
                   ),
@@ -273,12 +337,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                       child: Column(
                         children: [
                           Text('Total Pengeluaran',
-                              style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 11)),
+                              style: GoogleFonts.poppins(
+                                  color: Colors.grey[600], fontSize: 11)),
                           const SizedBox(height: 2),
                           Text(
                             'Rp ${_formatCurrency(double.tryParse(amountCtrl.text) ?? 0)}',
                             style: GoogleFonts.poppins(
-                                color: Colors.red[700], fontSize: 20, fontWeight: FontWeight.bold),
+                                color: Colors.red[700],
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -290,16 +357,19 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey[600])),
+                child: Text('Batal',
+                    style: GoogleFonts.poppins(color: Colors.grey[600])),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: () async {
-                  final amount = double.tryParse(amountCtrl.text) ?? 0;
+                  final amount =
+                      double.tryParse(amountCtrl.text) ?? 0;
                   if (descCtrl.text.trim().isEmpty || amount <= 0) return;
                   await _firestore.collection('expenses').add({
                     'category': selectedCategory,
@@ -309,7 +379,9 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   });
                   if (mounted) Navigator.pop(ctx);
                 },
-                child: Text('Simpan', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                child: Text('Simpan',
+                    style:
+                        GoogleFonts.poppins(fontWeight: FontWeight.w600)),
               ),
             ],
           );
@@ -318,11 +390,14 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
+  // ─── Streams ─────────────────────────────────────────────────────────────────
+
   Stream<QuerySnapshot> _expensesStream() {
     final range = _getDateRange();
     return _firestore
         .collection('expenses')
-        .where('dateTime', isGreaterThanOrEqualTo: range['start']!.toIso8601String())
+        .where('dateTime',
+            isGreaterThanOrEqualTo: range['start']!.toIso8601String())
         .where('dateTime', isLessThan: range['end']!.toIso8601String())
         .orderBy('dateTime', descending: true)
         .snapshots();
@@ -332,7 +407,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     final range = _getDateRange();
     final snap = await _firestore
         .collection('expenses')
-        .where('dateTime', isGreaterThanOrEqualTo: range['start']!.toIso8601String())
+        .where('dateTime',
+            isGreaterThanOrEqualTo: range['start']!.toIso8601String())
         .where('dateTime', isLessThan: range['end']!.toIso8601String())
         .get();
 
@@ -349,6 +425,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     return totals;
   }
 
+  // ─── Build ───────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -364,26 +442,35 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                 child: Text(
                   'Riwayat Pengeluaran',
                   style: GoogleFonts.poppins(
-                      fontSize: 15, fontWeight: FontWeight.bold, color: kDark),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: kDark),
                 ),
               ),
             ),
-            SliverToBoxAdapter(child: Divider(thickness: 1, color: Colors.grey[200])),
+            SliverToBoxAdapter(
+                child: Divider(thickness: 1, color: Colors.grey[200])),
             _buildExpenseSliver(),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddExpenseDialog(context),
-        backgroundColor: kPrimary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text('Catat Pengeluaran',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-      ),
+      // FAB hanya untuk owner
+      floatingActionButton: widget.isReadOnly
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => _showAddExpenseDialog(context),
+              backgroundColor: kPrimary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: Text('Catat Pengeluaran',
+                  style:
+                      GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            ),
     );
   }
+
+  // ─── Period selector ─────────────────────────────────────────────────────────
 
   Widget _buildPeriodSelector() {
     return Container(
@@ -401,12 +488,16 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           const SizedBox(width: 8),
           Text('Periode:',
               style: GoogleFonts.poppins(
-                  fontSize: 14, fontWeight: FontWeight.bold, color: kPrimary)),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: kPrimary)),
           const Spacer(),
           DropdownButton<String>(
             value: _selectedPeriod,
             items: ['Harian', 'Bulanan', 'Tahunan'].map((v) {
-              return DropdownMenuItem(value: v, child: Text(v, style: GoogleFonts.poppins()));
+              return DropdownMenuItem(
+                  value: v,
+                  child: Text(v, style: GoogleFonts.poppins()));
             }).toList(),
             onChanged: (v) => setState(() => _selectedPeriod = v!),
           ),
@@ -414,7 +505,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           InkWell(
             onTap: () => _selectDate(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 border: Border.all(color: const Color(0xFF9FE1CB)),
                 borderRadius: BorderRadius.circular(8),
@@ -423,10 +515,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_today, size: 16, color: kPrimary),
+                  const Icon(Icons.calendar_today,
+                      size: 16, color: kPrimary),
                   const SizedBox(width: 6),
                   Text(_getDateText(),
-                      style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500)),
+                      style: GoogleFonts.poppins(
+                          fontSize: 13, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
@@ -436,6 +530,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
+  // ─── Summary section ─────────────────────────────────────────────────────────
+
   Widget _buildSummarySection() {
     return FutureBuilder<Map<String, double>>(
       future: _getCategorySummary(),
@@ -443,7 +539,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         if (!snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator(color: kPrimary)),
+            child: Center(
+                child: CircularProgressIndicator(color: kPrimary)),
           );
         }
         final totals = snapshot.data!;
@@ -459,16 +556,21 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             ),
             child: Column(
               children: [
-                const Icon(Icons.money_off, color: Colors.white, size: 28),
+                const Icon(Icons.money_off,
+                    color: Colors.white, size: 28),
                 const SizedBox(height: 6),
                 Text('Total Pengeluaran',
                     style: GoogleFonts.poppins(
-                        fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w500)),
+                        fontSize: 13,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
                 Text(
                   'Rp ${_formatCurrency(grandTotal)}',
                   style: GoogleFonts.poppins(
-                      fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
               ],
             ),
@@ -477,6 +579,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       },
     );
   }
+
+  // ─── Category breakdown ──────────────────────────────────────────────────────
 
   Widget _buildCategoryBreakdown() {
     return FutureBuilder<Map<String, double>>(
@@ -493,12 +597,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
             children: [
               Text('Breakdown Kategori',
                   style: GoogleFonts.poppins(
-                      fontSize: 13, fontWeight: FontWeight.bold, color: kDark)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: kDark)),
               const SizedBox(height: 10),
               ...kCategories.map((cat) {
                 final amount = totals[cat['key']] ?? 0;
                 if (amount == 0) return const SizedBox.shrink();
-                final percent = grandTotal > 0 ? amount / grandTotal : 0.0;
+                final percent =
+                    grandTotal > 0 ? amount / grandTotal : 0.0;
                 final color = cat['color'] as Color;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -507,17 +614,25 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(cat['icon'] as IconData, size: 14, color: color),
+                          Icon(cat['icon'] as IconData,
+                              size: 14, color: color),
                           const SizedBox(width: 6),
                           Text(cat['label'],
-                              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700])),
+                              style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color: Colors.grey[700])),
                           const Spacer(),
                           Text('Rp ${_formatCurrency(amount)}',
                               style: GoogleFonts.poppins(
-                                  fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: color)),
                           const SizedBox(width: 6),
-                          Text('${(percent * 100).toStringAsFixed(0)}%',
-                              style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
+                          Text(
+                              '${(percent * 100).toStringAsFixed(0)}%',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: Colors.grey[500])),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -526,7 +641,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                         child: LinearProgressIndicator(
                           value: percent,
                           backgroundColor: color.withOpacity(0.1),
-                          valueColor: AlwaysStoppedAnimation<Color>(color),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(color),
                           minHeight: 6,
                         ),
                       ),
@@ -542,6 +658,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     );
   }
 
+  // ─── Expense list ────────────────────────────────────────────────────────────
+
   Widget _buildExpenseSliver() {
     return StreamBuilder<QuerySnapshot>(
       stream: _expensesStream(),
@@ -550,7 +668,8 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
           return const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator(color: kPrimary)),
+              child: Center(
+                  child: CircularProgressIndicator(color: kPrimary)),
             ),
           );
         }
@@ -580,7 +699,99 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
     final meta = _getCategoryMeta(category);
     final color = meta['color'] as Color;
 
-    // ✅ Swipe kiri untuk hapus
+    // Konten card (tanpa Dismissible)
+    Widget cardContent = Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(meta['icon'] as IconData,
+                    color: color, size: 20),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(meta['label'],
+                            style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color: color,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(description,
+                      style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: kDark),
+                      overflow: TextOverflow.ellipsis),
+                  Text(dateStr,
+                      style: GoogleFonts.poppins(
+                          fontSize: 10, color: Colors.grey[500])),
+                  const SizedBox(height: 2),
+                  // Hint swipe hanya untuk owner
+                  if (!widget.isReadOnly)
+                    Row(
+                      children: [
+                        Icon(Icons.swipe_left,
+                            size: 11, color: Colors.grey[400]),
+                        const SizedBox(width: 3),
+                        Text('Geser kiri untuk hapus',
+                            style: GoogleFonts.poppins(
+                                fontSize: 10, color: Colors.grey[400])),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '- Rp ${_formatCurrency(amount)}',
+                  style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[600]),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Investor: hanya tampilkan card, tanpa swipe hapus
+    if (widget.isReadOnly) {
+      return cardContent;
+    }
+
+    // Owner: bungkus dengan Dismissible
     return Dismissible(
       key: Key(doc.id),
       direction: DismissDirection.endToStart,
@@ -594,12 +805,12 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
                   style: GoogleFonts.poppins()),
               backgroundColor: Colors.red[400],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           );
         }
       },
-      // ✅ Background merah saat digeser
       background: Container(
         alignment: Alignment.centerRight,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
@@ -611,86 +822,18 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.delete_forever, color: Colors.white, size: 28),
+            const Icon(Icons.delete_forever,
+                color: Colors.white, size: 28),
             const SizedBox(height: 4),
             Text('Hapus',
                 style: GoogleFonts.poppins(
-                    color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
       ),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 0,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Icon(meta['icon'] as IconData, color: color, size: 20),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(meta['label'],
-                              style: GoogleFonts.poppins(
-                                  fontSize: 10, color: color, fontWeight: FontWeight.w600)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(description,
-                        style: GoogleFonts.poppins(
-                            fontSize: 13, fontWeight: FontWeight.w600, color: kDark),
-                        overflow: TextOverflow.ellipsis),
-                    Text(dateStr,
-                        style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[500])),
-                    // ✅ Hint swipe
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(Icons.swipe_left, size: 11, color: Colors.grey[400]),
-                        const SizedBox(width: 3),
-                        Text('Geser kiri untuk hapus',
-                            style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[400])),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '- Rp ${_formatCurrency(amount)}',
-                    style: GoogleFonts.poppins(
-                        fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red[600]),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      child: cardContent,
     );
   }
 
@@ -699,12 +842,15 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
       child: Column(
         children: [
           const SizedBox(height: 60),
-          Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[300]),
+          Icon(Icons.receipt_long_outlined,
+              size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text('Belum ada pengeluaran',
-              style: GoogleFonts.poppins(fontSize: 15, color: Colors.grey[500])),
+              style: GoogleFonts.poppins(
+                  fontSize: 15, color: Colors.grey[500])),
           Text('pada periode ini',
-              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[400])),
+              style: GoogleFonts.poppins(
+                  fontSize: 13, color: Colors.grey[400])),
         ],
       ),
     );

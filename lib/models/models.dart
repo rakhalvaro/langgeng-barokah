@@ -89,7 +89,7 @@ class Expense {
   String description;
   double amount;
   DateTime dateTime;
- 
+
   Expense({
     required this.id,
     required this.category,
@@ -97,14 +97,14 @@ class Expense {
     required this.amount,
     required this.dateTime,
   });
- 
+
   Map<String, dynamic> toMap() => {
         'category': category,
         'description': description,
         'amount': amount,
         'dateTime': dateTime.toIso8601String(),
       };
- 
+
   factory Expense.fromMap(String id, Map<String, dynamic> map) => Expense(
         id: id,
         category: map['category'] ?? 'lainnya',

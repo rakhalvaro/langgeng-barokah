@@ -17,7 +17,6 @@ class _ReportScreenState extends State<ReportScreen> {
   static const Color kBg = Color(0xFFE1F5EE);
   static const Color kDark = Color(0xFF085041);
 
-  // ✅ Helper lokal — tidak perlu import currency_formatter.dart
   String _formatCurrency(double amount) {
     return amount.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -35,7 +34,8 @@ class _ReportScreenState extends State<ReportScreen> {
             SliverToBoxAdapter(child: _buildSummary()),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
                 child: Text(
                   'Detail Order',
                   style: GoogleFonts.poppins(
@@ -46,7 +46,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
             ),
-            SliverToBoxAdapter(child: Divider(thickness: 1, color: Colors.grey[200])),
+            SliverToBoxAdapter(
+                child: Divider(thickness: 1, color: Colors.grey[200])),
             _buildOrdersSliver(),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
@@ -83,7 +84,8 @@ class _ReportScreenState extends State<ReportScreen> {
               const Spacer(),
               DropdownButton<String>(
                 value: _selectedPeriod,
-                items: ['Harian', 'Bulanan', 'Tahunan'].map((String value) {
+                items: ['Harian', 'Bulanan', 'Tahunan']
+                    .map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value, style: GoogleFonts.poppins()),
@@ -97,7 +99,8 @@ class _ReportScreenState extends State<ReportScreen> {
           InkWell(
             onTap: () => _selectDate(context),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 border: Border.all(color: const Color(0xFF9FE1CB)),
                 borderRadius: BorderRadius.circular(8),
@@ -110,7 +113,8 @@ class _ReportScreenState extends State<ReportScreen> {
                   const SizedBox(width: 8),
                   Text(
                     _getDateText(),
-                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500),
+                    style: GoogleFonts.poppins(
+                        fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -128,7 +132,8 @@ class _ReportScreenState extends State<ReportScreen> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator(color: kPrimary)),
+            child:
+                Center(child: CircularProgressIndicator(color: kPrimary)),
           );
         }
         if (!snapshot.hasData) return const SizedBox();
@@ -147,7 +152,6 @@ class _ReportScreenState extends State<ReportScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Row: Total Order & Total Terjual
               Row(
                 children: [
                   Expanded(
@@ -166,8 +170,6 @@ class _ReportScreenState extends State<ReportScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Row: Omset & Pengeluaran
               Row(
                 children: [
                   Expanded(
@@ -190,8 +192,6 @@ class _ReportScreenState extends State<ReportScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Laba Bersih — full width highlight card
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
@@ -202,7 +202,9 @@ class _ReportScreenState extends State<ReportScreen> {
                 child: Column(
                   children: [
                     Icon(
-                      netProfit >= 0 ? Icons.trending_up : Icons.trending_down,
+                      netProfit >= 0
+                          ? Icons.trending_up
+                          : Icons.trending_down,
                       color: Colors.white,
                       size: 28,
                     ),
@@ -239,7 +241,8 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  Widget _summaryCard(String title, String value, IconData icon, Color color) {
+  Widget _summaryCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -261,7 +264,9 @@ class _ReportScreenState extends State<ReportScreen> {
           const SizedBox(height: 4),
           Text(value,
               style: GoogleFonts.poppins(
-                  fontSize: 13, fontWeight: FontWeight.bold, color: color),
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: color),
               textAlign: TextAlign.center),
         ],
       ),
@@ -290,7 +295,8 @@ class _ReportScreenState extends State<ReportScreen> {
               child: Center(
                 child: Text(
                   'Belum ada order pada periode ini',
-                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
+                  style: GoogleFonts.poppins(
+                      fontSize: 14, color: Colors.grey),
                 ),
               ),
             ),
@@ -320,27 +326,34 @@ class _ReportScreenState extends State<ReportScreen> {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 0,
       child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        data: Theme.of(context)
+            .copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           title: Text(buyerName,
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 15)),
+              style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600, fontSize: 15)),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(dateStr,
-                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500])),
+                  style: GoogleFonts.poppins(
+                      fontSize: 11, color: Colors.grey[500])),
               const SizedBox(height: 2),
               Text('Rp ${_formatCurrency(total)}',
                   style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold, color: kPrimary, fontSize: 14)),
+                      fontWeight: FontWeight.bold,
+                      color: kPrimary,
+                      fontSize: 14)),
             ],
           ),
           trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: isPaid ? kAccent : Colors.orange[100],
               borderRadius: BorderRadius.circular(20),
@@ -363,12 +376,17 @@ class _ReportScreenState extends State<ReportScreen> {
                 children: [
                   _detailRow('Jumlah',
                       '${kg % 1 == 0 ? kg.toInt() : kg.toStringAsFixed(1)} kg'),
-                  _detailRow('Harga/kg', 'Rp ${_formatCurrency(pricePerKg)}'),
+                  _detailRow(
+                      'Harga/kg', 'Rp ${_formatCurrency(pricePerKg)}'),
                   const Divider(height: 16),
                   _detailRow('Total', 'Rp ${_formatCurrency(total)}',
                       isBold: true, valueColor: kPrimary),
-                  _detailRow('Status', isPaid ? '✅ Lunas' : '⏳ Belum Lunas',
-                      valueColor: isPaid ? Colors.green[700] : Colors.orange[700]),
+                  _detailRow(
+                      'Status',
+                      isPaid ? '✅ Lunas' : '⏳ Belum Lunas',
+                      valueColor: isPaid
+                          ? Colors.green[700]
+                          : Colors.orange[700]),
                 ],
               ),
             ),
@@ -386,7 +404,8 @@ class _ReportScreenState extends State<ReportScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600])),
+              style: GoogleFonts.poppins(
+                  fontSize: 13, color: Colors.grey[600])),
           Text(value,
               style: GoogleFonts.poppins(
                 fontSize: 13,
@@ -402,7 +421,8 @@ class _ReportScreenState extends State<ReportScreen> {
     final range = _getDateRange();
     return _firestore
         .collection('orders')
-        .where('dateTime', isGreaterThanOrEqualTo: range['start']!.toIso8601String())
+        .where('dateTime',
+            isGreaterThanOrEqualTo: range['start']!.toIso8601String())
         .where('dateTime', isLessThan: range['end']!.toIso8601String())
         .orderBy('dateTime', descending: true)
         .snapshots();
@@ -411,10 +431,10 @@ class _ReportScreenState extends State<ReportScreen> {
   Future<Map<String, dynamic>> _calculateFinancials() async {
     final range = _getDateRange();
 
-    // Fetch orders
     final ordersSnap = await _firestore
         .collection('orders')
-        .where('dateTime', isGreaterThanOrEqualTo: range['start']!.toIso8601String())
+        .where('dateTime',
+            isGreaterThanOrEqualTo: range['start']!.toIso8601String())
         .where('dateTime', isLessThan: range['end']!.toIso8601String())
         .get();
 
@@ -436,10 +456,10 @@ class _ReportScreenState extends State<ReportScreen> {
       }
     }
 
-    // Fetch expenses
     final expensesSnap = await _firestore
         .collection('expenses')
-        .where('dateTime', isGreaterThanOrEqualTo: range['start']!.toIso8601String())
+        .where('dateTime',
+            isGreaterThanOrEqualTo: range['start']!.toIso8601String())
         .where('dateTime', isLessThan: range['end']!.toIso8601String())
         .get();
 
@@ -460,12 +480,15 @@ class _ReportScreenState extends State<ReportScreen> {
     DateTime startDate, endDate;
     switch (_selectedPeriod) {
       case 'Harian':
-        startDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+        startDate = DateTime(
+            _selectedDate.year, _selectedDate.month, _selectedDate.day);
         endDate = startDate.add(const Duration(days: 1));
         break;
       case 'Bulanan':
-        startDate = DateTime(_selectedDate.year, _selectedDate.month, 1);
-        endDate = DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
+        startDate =
+            DateTime(_selectedDate.year, _selectedDate.month, 1);
+        endDate =
+            DateTime(_selectedDate.year, _selectedDate.month + 1, 1);
         break;
       case 'Tahunan':
         startDate = DateTime(_selectedDate.year, 1, 1);
@@ -503,8 +526,9 @@ class _ReportScreenState extends State<ReportScreen> {
         firstDate: DateTime(2020),
         lastDate: DateTime.now(),
         builder: (context, child) => Theme(
-          data: Theme.of(context)
-              .copyWith(colorScheme: const ColorScheme.light(primary: kPrimary)),
+          data: Theme.of(context).copyWith(
+              colorScheme:
+                  const ColorScheme.light(primary: kPrimary)),
           child: child!,
         ),
       );
@@ -517,13 +541,15 @@ class _ReportScreenState extends State<ReportScreen> {
         lastDate: DateTime.now(),
         selectableDayPredicate: (date) => date.day == 1,
         builder: (context, child) => Theme(
-          data: Theme.of(context)
-              .copyWith(colorScheme: const ColorScheme.light(primary: kPrimary)),
+          data: Theme.of(context).copyWith(
+              colorScheme:
+                  const ColorScheme.light(primary: kPrimary)),
           child: child!,
         ),
       );
       if (picked != null) {
-        setState(() => _selectedDate = DateTime(picked.year, picked.month, 1));
+        setState(() =>
+            _selectedDate = DateTime(picked.year, picked.month, 1));
       }
     } else if (_selectedPeriod == 'Tahunan') {
       final picked = await showDatePicker(
@@ -531,10 +557,12 @@ class _ReportScreenState extends State<ReportScreen> {
         initialDate: _selectedDate,
         firstDate: DateTime(2020),
         lastDate: DateTime.now(),
-        selectableDayPredicate: (date) => date.day == 1 && date.month == 1,
+        selectableDayPredicate: (date) =>
+            date.day == 1 && date.month == 1,
         builder: (context, child) => Theme(
-          data: Theme.of(context)
-              .copyWith(colorScheme: const ColorScheme.light(primary: kPrimary)),
+          data: Theme.of(context).copyWith(
+              colorScheme:
+                  const ColorScheme.light(primary: kPrimary)),
           child: child!,
         ),
       );

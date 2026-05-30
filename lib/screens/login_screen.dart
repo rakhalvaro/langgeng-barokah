@@ -37,7 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
           .doc('app_config')
           .get();
 
-      final correctPassword = doc.data()?['appPassword'] as String?;
+      final data = doc.data();
+      final correctPassword = data?['appPassword'] as String?;
+      final investorPassword = data?['investorPassword'] as String?;
 
       if (correctPassword == null) {
         setState(() {
@@ -47,20 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (_passwordController.text == correctPassword) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  MainScreen(),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              transitionDuration: const Duration(milliseconds: 400),
-            ),
-          );
-        }
+      final inputPassword = _passwordController.text;
+
+      if (inputPassword == correctPassword) {
+        // Login sebagai pemilik (owner)
+        _navigateToMain(role: 'owner');
+      } else if (investorPassword != null && inputPassword == investorPassword) {
+        // Login sebagai investor (read only)
+        _navigateToMain(role: 'investor');
       } else {
         setState(() {
           _isLoading = false;
@@ -73,6 +69,20 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = 'Gagal terhubung, cek koneksi internet';
       });
     }
+  }
+
+  void _navigateToMain({required String role}) {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            MainScreen(role: role),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
   }
 
   @override

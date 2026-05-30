@@ -7,7 +7,8 @@ import 'report_screen.dart';
 import '../utils/update_checker.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final String role; // 'owner' atau 'investor'
+  const MainScreen({super.key, required this.role});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -16,23 +17,28 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    StockScreen(),
-    OrderScreen(),
-    ExpenseScreen(),
-    ReportScreen(),
-  ];
+  bool get _isInvestor => widget.role == 'investor';
+
+  List<Widget> get _screens => [
+        StockScreen(isReadOnly: _isInvestor),
+        OrderScreen(isReadOnly: _isInvestor),
+        ExpenseScreen(isReadOnly: _isInvestor),
+        ReportScreen(),
+      ];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          UpdateChecker.checkForUpdate(context);
-        }
+    // Update checker hanya untuk owner
+    if (!_isInvestor) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            UpdateChecker.checkForUpdate(context);
+          }
+        });
       });
-    });
+    }
   }
 
   @override
@@ -70,6 +76,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ],
         ),
+
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(

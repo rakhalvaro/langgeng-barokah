@@ -4,6 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 
 class OrderScreen extends StatefulWidget {
+  final bool isReadOnly;
+  const OrderScreen({super.key, this.isReadOnly = false});
+
   @override
   _OrderScreenState createState() => _OrderScreenState();
 }
@@ -31,7 +34,6 @@ class _OrderScreenState extends State<OrderScreen>
     super.dispose();
   }
 
-  // ✅ Helper lokal — tidak perlu import currency_formatter.dart
   String _formatCurrency(double amount) {
     return amount.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -68,7 +70,8 @@ class _OrderScreenState extends State<OrderScreen>
     return remaining < 0 ? 0 : remaining.toDouble();
   }
 
-  // ✅ Konfirmasi hapus order
+  // ─── Konfirmasi hapus (hanya owner) ─────────────────────────────────────────
+
   Future<bool?> _confirmDeleteOrder(BuildContext context, EggOrder order) {
     return showDialog<bool>(
       context: context,
@@ -95,7 +98,9 @@ class _OrderScreenState extends State<OrderScreen>
                 style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold, color: Colors.black),
               ),
-              TextSpan(text: ' (${_formatKg(order.kg)} — Rp ${_formatCurrency(order.total)})?'),
+              TextSpan(
+                  text:
+                      ' (${_formatKg(order.kg)} — Rp ${_formatCurrency(order.total)})?'),
               const TextSpan(text: '\n\nData tidak bisa dikembalikan.'),
             ],
           ),
@@ -103,16 +108,19 @@ class _OrderScreenState extends State<OrderScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Batal', style: GoogleFonts.poppins(color: Colors.grey[600])),
+            child:
+                Text('Batal', style: GoogleFonts.poppins(color: Colors.grey[600])),
           ),
           ElevatedButton.icon(
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.delete_forever, size: 18),
-            label: Text('Hapus', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            label:
+                Text('Hapus', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red[500],
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
         ],
@@ -120,7 +128,11 @@ class _OrderScreenState extends State<OrderScreen>
     );
   }
 
+  // ─── Add order dialog (hanya owner) ─────────────────────────────────────────
+
   void _showAddOrderDialog(BuildContext context, double remainingStock) {
+    if (widget.isReadOnly) return;
+
     final buyerCtrl = TextEditingController();
     final kgCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
@@ -130,19 +142,23 @@ class _OrderScreenState extends State<OrderScreen>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialog) {
-          double kg = double.tryParse(kgCtrl.text.replaceAll(',', '.')) ?? 0;
+          double kg =
+              double.tryParse(kgCtrl.text.replaceAll(',', '.')) ?? 0;
           double price = double.tryParse(priceCtrl.text) ?? 0;
           double total = kg * price;
 
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
                 const Icon(Icons.add_shopping_cart, color: kPrimary, size: 22),
                 const SizedBox(width: 8),
                 Text('Order Baru',
                     style: GoogleFonts.poppins(
-                        fontSize: 16, fontWeight: FontWeight.bold, color: kDark)),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: kDark)),
               ],
             ),
             content: SingleChildScrollView(
@@ -151,9 +167,12 @@ class _OrderScreenState extends State<OrderScreen>
                 children: [
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: remainingStock > 0 ? kBg : Colors.red.shade50,
+                      color: remainingStock > 0
+                          ? kBg
+                          : Colors.red.shade50,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: remainingStock > 0
@@ -164,13 +183,17 @@ class _OrderScreenState extends State<OrderScreen>
                     child: Row(
                       children: [
                         Icon(Icons.inventory_2_outlined,
-                            color: remainingStock > 0 ? kAccent : Colors.red, size: 18),
+                            color:
+                                remainingStock > 0 ? kAccent : Colors.red,
+                            size: 18),
                         const SizedBox(width: 8),
                         Text(
                           'Stok tersedia: ${_formatKg(remainingStock)}',
                           style: GoogleFonts.poppins(
                             fontSize: 13,
-                            color: remainingStock > 0 ? kDark : Colors.red.shade700,
+                            color: remainingStock > 0
+                                ? kDark
+                                : Colors.red.shade700,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -183,27 +206,33 @@ class _OrderScreenState extends State<OrderScreen>
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
                       labelText: 'Nama Pembeli',
-                      prefixIcon: const Icon(Icons.person_outline, color: kAccent),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon:
+                          const Icon(Icons.person_outline, color: kAccent),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: kPrimary, width: 2),
+                        borderSide:
+                            const BorderSide(color: kPrimary, width: 2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: kgCtrl,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
                     decoration: InputDecoration(
                       labelText: 'Jumlah (kg)',
                       suffixText: 'kg',
-                      prefixIcon: const Icon(Icons.scale_outlined, color: kAccent),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon:
+                          const Icon(Icons.scale_outlined, color: kAccent),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: kPrimary, width: 2),
+                        borderSide:
+                            const BorderSide(color: kPrimary, width: 2),
                       ),
                       errorText: errorMsg,
                     ),
@@ -216,11 +245,14 @@ class _OrderScreenState extends State<OrderScreen>
                     decoration: InputDecoration(
                       labelText: 'Harga per kg',
                       prefixText: 'Rp ',
-                      prefixIcon: const Icon(Icons.attach_money, color: kAccent),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      prefixIcon:
+                          const Icon(Icons.attach_money, color: kAccent),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: kPrimary, width: 2),
+                        borderSide:
+                            const BorderSide(color: kPrimary, width: 2),
                       ),
                     ),
                     onChanged: (_) => setDialog(() {}),
@@ -233,7 +265,8 @@ class _OrderScreenState extends State<OrderScreen>
                       decoration: BoxDecoration(
                         color: kBg,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF9FE1CB)),
+                        border:
+                            Border.all(color: const Color(0xFF9FE1CB)),
                       ),
                       child: Column(
                         children: [
@@ -316,8 +349,8 @@ class _OrderScreenState extends State<OrderScreen>
                                   (d['afternoonKg'] ?? 0) as num;
                               final leftover =
                                   (d['previousLeftover'] ?? 0) as num;
-                              currentSold = ((d['soldKg'] ?? 0) as num)
-                                  .toDouble();
+                              currentSold =
+                                  ((d['soldKg'] ?? 0) as num).toDouble();
                               totalAvailable =
                                   (morning + afternoon + leftover)
                                       .toDouble();
@@ -367,11 +400,16 @@ class _OrderScreenState extends State<OrderScreen>
     );
   }
 
+  // ─── Konfirmasi lunas (hanya owner) ─────────────────────────────────────────
+
   void _confirmLunas(BuildContext context, EggOrder order) {
+    if (widget.isReadOnly) return;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             const Icon(Icons.check_circle_outline, color: kAccent, size: 22),
@@ -445,6 +483,8 @@ class _OrderScreenState extends State<OrderScreen>
     );
   }
 
+  // ─── Streams ─────────────────────────────────────────────────────────────────
+
   Stream<QuerySnapshot> _ordersStream(bool isPaid) {
     if (!isPaid) {
       return _firestore
@@ -466,12 +506,153 @@ class _OrderScreenState extends State<OrderScreen>
         .snapshots();
   }
 
+  // ─── Order card ──────────────────────────────────────────────────────────────
+
   Widget _buildOrderCard(EggOrder order) {
     final dt = order.dateTime;
     final dateStr =
         '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
-    // ✅ Swipe kiri untuk hapus
+    // Konten card (tanpa Dismissible) — dipakai oleh owner dan investor
+    Widget cardContent = Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration:
+                      BoxDecoration(color: kBg, shape: BoxShape.circle),
+                  child: const Center(
+                      child: Text('🥚', style: TextStyle(fontSize: 18))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.buyerName,
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: kDark),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        dateStr,
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, color: Colors.grey[500]),
+                      ),
+                      const SizedBox(height: 2),
+                      // Hint swipe hanya untuk owner
+                      if (!widget.isReadOnly)
+                        Row(
+                          children: [
+                            Icon(Icons.swipe_left,
+                                size: 11, color: Colors.grey[400]),
+                            const SizedBox(width: 3),
+                            Text('Geser kiri untuk hapus',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 10, color: Colors.grey[400])),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: order.isPaid ? kAccent : Colors.orange[100],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    order.isPaid ? '✓ Lunas' : 'Belum Lunas',
+                    style: GoogleFonts.poppins(
+                      color: order.isPaid
+                          ? Colors.white
+                          : Colors.orange[800],
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color: kBg, borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: [
+                  Expanded(
+                      child: _orderDetail('Jumlah',
+                          _formatKg(order.kg), Icons.scale_outlined)),
+                  Container(
+                      width: 1,
+                      height: 36,
+                      color: const Color(0xFF9FE1CB)),
+                  Expanded(
+                      child: _orderDetail(
+                          'Harga/kg',
+                          'Rp ${_formatCurrency(order.pricePerKg)}',
+                          Icons.sell_outlined)),
+                  Container(
+                      width: 1,
+                      height: 36,
+                      color: const Color(0xFF9FE1CB)),
+                  Expanded(
+                      child: _orderDetail(
+                          'Total',
+                          'Rp ${_formatCurrency(order.total)}',
+                          Icons.payments_outlined,
+                          bold: true,
+                          color: kPrimary)),
+                ],
+              ),
+            ),
+            // Tombol Tandai Lunas — hanya owner, hanya jika belum lunas
+            if (!order.isPaid && !widget.isReadOnly) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _confirmLunas(context, order),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: Text('Tandai Lunas',
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    // Investor hanya lihat card, tanpa swipe hapus
+    if (widget.isReadOnly) {
+      return cardContent;
+    }
+
+    // Owner: bungkus dengan Dismissible
     return Dismissible(
       key: Key(order.id),
       direction: DismissDirection.endToStart,
@@ -491,7 +672,6 @@ class _OrderScreenState extends State<OrderScreen>
           );
         }
       },
-      // ✅ Background merah saat digeser
       background: Container(
         alignment: Alignment.centerRight,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -513,142 +693,7 @@ class _OrderScreenState extends State<OrderScreen>
           ],
         ),
       ),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration:
-                        BoxDecoration(color: kBg, shape: BoxShape.circle),
-                    child: const Center(
-                        child:
-                            Text('🥚', style: TextStyle(fontSize: 18))),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          order.buyerName,
-                          style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: kDark),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          dateStr,
-                          style: GoogleFonts.poppins(
-                              fontSize: 11, color: Colors.grey[500]),
-                        ),
-                        // ✅ Hint swipe
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(Icons.swipe_left,
-                                size: 11, color: Colors.grey[400]),
-                            const SizedBox(width: 3),
-                            Text('Geser kiri untuk hapus',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 10, color: Colors.grey[400])),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color:
-                          order.isPaid ? kAccent : Colors.orange[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      order.isPaid ? '✓ Lunas' : 'Belum Lunas',
-                      style: GoogleFonts.poppins(
-                        color: order.isPaid
-                            ? Colors.white
-                            : Colors.orange[800],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                    color: kBg,
-                    borderRadius: BorderRadius.circular(10)),
-                child: Row(
-                  children: [
-                    Expanded(
-                        child: _orderDetail('Jumlah',
-                            _formatKg(order.kg), Icons.scale_outlined)),
-                    Container(
-                        width: 1,
-                        height: 36,
-                        color: const Color(0xFF9FE1CB)),
-                    Expanded(
-                        child: _orderDetail(
-                            'Harga/kg',
-                            'Rp ${_formatCurrency(order.pricePerKg)}',
-                            Icons.sell_outlined)),
-                    Container(
-                        width: 1,
-                        height: 36,
-                        color: const Color(0xFF9FE1CB)),
-                    Expanded(
-                        child: _orderDetail(
-                            'Total',
-                            'Rp ${_formatCurrency(order.total)}',
-                            Icons.payments_outlined,
-                            bold: true,
-                            color: kPrimary)),
-                  ],
-                ),
-              ),
-              if (!order.isPaid) ...[
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _confirmLunas(context, order),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    icon: const Icon(Icons.check_circle_outline,
-                        size: 18),
-                    label: Text('Tandai Lunas',
-                        style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      child: cardContent,
     );
   }
 
@@ -659,8 +704,8 @@ class _OrderScreenState extends State<OrderScreen>
         Icon(icon, size: 16, color: kAccent),
         const SizedBox(height: 4),
         Text(label,
-            style:
-                GoogleFonts.poppins(fontSize: 10, color: Colors.grey[500])),
+            style: GoogleFonts.poppins(
+                fontSize: 10, color: Colors.grey[500])),
         const SizedBox(height: 2),
         Text(
           value,
@@ -685,8 +730,8 @@ class _OrderScreenState extends State<OrderScreen>
               size: 64, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text('Tidak ada order $label',
-              style:
-                  GoogleFonts.poppins(fontSize: 15, color: Colors.grey[500])),
+              style: GoogleFonts.poppins(
+                  fontSize: 15, color: Colors.grey[500])),
           const SizedBox(height: 6),
           Text('hari ini',
               style: GoogleFonts.poppins(
@@ -695,6 +740,8 @@ class _OrderScreenState extends State<OrderScreen>
       ),
     );
   }
+
+  // ─── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -727,7 +774,8 @@ class _OrderScreenState extends State<OrderScreen>
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const Center(
-                          child: CircularProgressIndicator(color: kPrimary));
+                          child:
+                              CircularProgressIndicator(color: kPrimary));
                     }
                     final orders = snapshot.data!.docs
                         .map((d) => EggOrder.fromMap(
@@ -747,7 +795,8 @@ class _OrderScreenState extends State<OrderScreen>
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const Center(
-                          child: CircularProgressIndicator(color: kPrimary));
+                          child:
+                              CircularProgressIndicator(color: kPrimary));
                     }
                     final orders = snapshot.data!.docs
                         .map((d) => EggOrder.fromMap(
@@ -767,39 +816,42 @@ class _OrderScreenState extends State<OrderScreen>
           ),
         ],
       ),
-      floatingActionButton: FutureBuilder<double>(
-        future: _getRemainingStock(),
-        builder: (context, snapshot) {
-          final remaining = snapshot.data ?? 0;
-          final hasStock = remaining > 0;
+      // FAB hanya untuk owner
+      floatingActionButton: widget.isReadOnly
+          ? null
+          : FutureBuilder<double>(
+              future: _getRemainingStock(),
+              builder: (context, snapshot) {
+                final remaining = snapshot.data ?? 0;
+                final hasStock = remaining > 0;
 
-          return FloatingActionButton.extended(
-            onPressed: hasStock
-                ? () => _showAddOrderDialog(context, remaining)
-                : () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Stok habis! Silakan input stok terlebih dahulu.',
-                          style: GoogleFonts.poppins(fontSize: 13),
-                        ),
-                        backgroundColor: Colors.red.shade600,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                    );
-                  },
-            backgroundColor: hasStock ? kPrimary : Colors.grey,
-            foregroundColor: Colors.white,
-            icon: Icon(hasStock ? Icons.add : Icons.block),
-            label: Text(
-              hasStock ? 'Order Baru' : 'Stok Habis',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                return FloatingActionButton.extended(
+                  onPressed: hasStock
+                      ? () => _showAddOrderDialog(context, remaining)
+                      : () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Stok habis! Silakan input stok terlebih dahulu.',
+                                style: GoogleFonts.poppins(fontSize: 13),
+                              ),
+                              backgroundColor: Colors.red.shade600,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        },
+                  backgroundColor: hasStock ? kPrimary : Colors.grey,
+                  foregroundColor: Colors.white,
+                  icon: Icon(hasStock ? Icons.add : Icons.block),
+                  label: Text(
+                    hasStock ? 'Order Baru' : 'Stok Habis',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
