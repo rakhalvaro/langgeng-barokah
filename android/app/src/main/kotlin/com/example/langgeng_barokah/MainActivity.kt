@@ -1,4 +1,4 @@
-package com.example.berkah_telor
+package com.example.langgeng_barokah
 
 import android.content.Intent
 import android.net.Uri
@@ -9,7 +9,7 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.berkah_telor/installer"
+    private val CHANNEL = "com.example.langgeng_barokah/installer"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

@@ -10,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class UpdateChecker {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const _channel = MethodChannel('com.example.berkah_telor/installer');
+  static const _channel = MethodChannel('com.example.langgeng_barokah/installer');
 
   static const Color kPrimary = Color(0xFF0F6E56);
   static const Color kAccent = Color(0xFF1D9E75);
