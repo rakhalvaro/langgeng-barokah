@@ -51,25 +51,6 @@ class _OrderScreenState extends State<OrderScreen>
     return '${kg.toStringAsFixed(1)} kg';
   }
 
-  Future<double> _getRemainingStock() async {
-    final doc = await _firestore
-        .collection('daily_stocks')
-        .doc(_todayId())
-        .get();
-
-    if (!doc.exists) return 0;
-
-    final data = doc.data()!;
-    final morningKg = (data['morningKg'] ?? 0) as num;
-    final afternoonKg = (data['afternoonKg'] ?? 0) as num;
-    final previousLeftover = (data['previousLeftover'] ?? 0) as num;
-    final soldKg = (data['soldKg'] ?? 0) as num;
-
-    final totalAvailable = morningKg + afternoonKg + previousLeftover;
-    final remaining = totalAvailable - soldKg;
-    return remaining < 0 ? 0 : remaining.toDouble();
-  }
-
   // ─── Konfirmasi hapus (hanya owner) ─────────────────────────────────────────
 
   Future<bool?> _confirmDeleteOrder(BuildContext context, EggOrder order) {
@@ -130,7 +111,7 @@ class _OrderScreenState extends State<OrderScreen>
 
   // ─── Add order dialog (hanya owner) ─────────────────────────────────────────
 
-  void _showAddOrderDialog(BuildContext context, double remainingStock) {
+  void _showAddOrderDialog(BuildContext context) {
     if (widget.isReadOnly) return;
 
     final buyerCtrl = TextEditingController();
@@ -140,260 +121,294 @@ class _OrderScreenState extends State<OrderScreen>
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) {
-          double kg =
-              double.tryParse(kgCtrl.text.replaceAll(',', '.')) ?? 0;
-          double price = double.tryParse(priceCtrl.text) ?? 0;
-          double total = kg * price;
+      builder: (ctx) => StreamBuilder<DocumentSnapshot>(
+        // Baca stok langsung dari Firestore real-time di dalam dialog
+        stream: _firestore
+            .collection('daily_stocks')
+            .doc(_todayId())
+            .snapshots(),
+        builder: (ctx, stockSnapshot) {
+          // Hitung remainingStock fresh dari Firestore
+          double remainingStock = 0;
+          if (stockSnapshot.hasData && stockSnapshot.data!.exists) {
+            final data =
+                stockSnapshot.data!.data() as Map<String, dynamic>;
+            final morningKg = (data['morningKg'] ?? 0) as num;
+            final afternoonKg = (data['afternoonKg'] ?? 0) as num;
+            final previousLeftover =
+                (data['previousLeftover'] ?? 0) as num;
+            final soldKg = (data['soldKg'] ?? 0) as num;
+            final totalAvailable =
+                morningKg + afternoonKg + previousLeftover;
+            remainingStock = (totalAvailable - soldKg)
+                .clamp(0, double.infinity)
+                .toDouble();
+          }
 
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                const Icon(Icons.add_shopping_cart, color: kPrimary, size: 22),
-                const SizedBox(width: 8),
-                Text('Order Baru',
-                    style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: kDark)),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: remainingStock > 0
-                          ? kBg
-                          : Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: remainingStock > 0
-                            ? const Color(0xFF9FE1CB)
-                            : Colors.red.shade200,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.inventory_2_outlined,
-                            color:
-                                remainingStock > 0 ? kAccent : Colors.red,
-                            size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Stok tersedia: ${_formatKg(remainingStock)}',
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
+          return StatefulBuilder(
+            builder: (ctx, setDialog) {
+              double kg =
+                  double.tryParse(kgCtrl.text.replaceAll(',', '.')) ?? 0;
+              double price = double.tryParse(priceCtrl.text) ?? 0;
+              double total = kg * price;
+
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                title: Row(
+                  children: [
+                    const Icon(Icons.add_shopping_cart,
+                        color: kPrimary, size: 22),
+                    const SizedBox(width: 8),
+                    Text('Order Baru',
+                        style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: kDark)),
+                  ],
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: remainingStock > 0
+                              ? kBg
+                              : Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
                             color: remainingStock > 0
-                                ? kDark
-                                : Colors.red.shade700,
-                            fontWeight: FontWeight.w600,
+                                ? const Color(0xFF9FE1CB)
+                                : Colors.red.shade200,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.inventory_2_outlined,
+                                color: remainingStock > 0
+                                    ? kAccent
+                                    : Colors.red,
+                                size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Stok tersedia: ${_formatKg(remainingStock)}',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: remainingStock > 0
+                                    ? kDark
+                                    : Colors.red.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: buyerCtrl,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: 'Nama Pembeli',
+                          prefixIcon: const Icon(Icons.person_outline,
+                              color: kAccent),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: kPrimary, width: 2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: kgCtrl,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(
+                                decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Jumlah (kg)',
+                          suffixText: 'kg',
+                          prefixIcon: const Icon(Icons.scale_outlined,
+                              color: kAccent),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: kPrimary, width: 2),
+                          ),
+                          errorText: errorMsg,
+                        ),
+                        onChanged: (_) =>
+                            setDialog(() => errorMsg = null),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: priceCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Harga per kg',
+                          prefixText: 'Rp ',
+                          prefixIcon: const Icon(Icons.attach_money,
+                              color: kAccent),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide:
+                                const BorderSide(color: kPrimary, width: 2),
+                          ),
+                        ),
+                        onChanged: (_) => setDialog(() {}),
+                      ),
+                      if (kg > 0 && price > 0) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: kBg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: const Color(0xFF9FE1CB)),
+                          ),
+                          child: Column(
+                            children: [
+                              Text('Total Pembayaran',
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.grey[600],
+                                      fontSize: 12)),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Rp ${_formatCurrency(total)}',
+                                style: GoogleFonts.poppins(
+                                    color: kDark,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '${_formatKg(kg)} × Rp ${_formatCurrency(price)}/kg',
+                                style: GoogleFonts.poppins(
+                                    color: Colors.grey[500], fontSize: 11),
+                              ),
+                            ],
                           ),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: buyerCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: InputDecoration(
-                      labelText: 'Nama Pembeli',
-                      prefixIcon:
-                          const Icon(Icons.person_outline, color: kAccent),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            const BorderSide(color: kPrimary, width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: kgCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Jumlah (kg)',
-                      suffixText: 'kg',
-                      prefixIcon:
-                          const Icon(Icons.scale_outlined, color: kAccent),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            const BorderSide(color: kPrimary, width: 2),
-                      ),
-                      errorText: errorMsg,
-                    ),
-                    onChanged: (_) => setDialog(() => errorMsg = null),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: priceCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Harga per kg',
-                      prefixText: 'Rp ',
-                      prefixIcon:
-                          const Icon(Icons.attach_money, color: kAccent),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            const BorderSide(color: kPrimary, width: 2),
-                      ),
-                    ),
-                    onChanged: (_) => setDialog(() {}),
-                  ),
-                  if (kg > 0 && price > 0) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: kBg,
-                        borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: const Color(0xFF9FE1CB)),
-                      ),
-                      child: Column(
-                        children: [
-                          Text('Total Pembayaran',
-                              style: GoogleFonts.poppins(
-                                  color: Colors.grey[600], fontSize: 12)),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Rp ${_formatCurrency(total)}',
-                            style: GoogleFonts.poppins(
-                                color: kDark,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            '${_formatKg(kg)} × Rp ${_formatCurrency(price)}/kg',
-                            style: GoogleFonts.poppins(
-                                color: Colors.grey[500], fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text('Batal',
-                    style: GoogleFonts.poppins(color: Colors.grey[600])),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
                 ),
-                onPressed: remainingStock <= 0
-                    ? null
-                    : () async {
-                        if (buyerCtrl.text.trim().isEmpty ||
-                            kgCtrl.text.isEmpty ||
-                            priceCtrl.text.isEmpty) return;
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('Batal',
+                        style:
+                            GoogleFonts.poppins(color: Colors.grey[600])),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: remainingStock <= 0
+                        ? null
+                        : () async {
+                            if (buyerCtrl.text.trim().isEmpty ||
+                                kgCtrl.text.isEmpty ||
+                                priceCtrl.text.isEmpty) return;
 
-                        final kgVal = double.tryParse(
-                                kgCtrl.text.replaceAll(',', '.')) ??
-                            0;
-                        final priceVal =
-                            double.tryParse(priceCtrl.text) ?? 0;
-                        if (kgVal <= 0 || priceVal <= 0) return;
+                            final kgVal = double.tryParse(
+                                    kgCtrl.text.replaceAll(',', '.')) ??
+                                0;
+                            final priceVal =
+                                double.tryParse(priceCtrl.text) ?? 0;
+                            if (kgVal <= 0 || priceVal <= 0) return;
 
-                        if (kgVal > remainingStock) {
-                          setDialog(() {
-                            errorMsg =
-                                'Melebihi stok! Sisa ${_formatKg(remainingStock)}';
-                          });
-                          return;
-                        }
-
-                        try {
-                          final stockRef = _firestore
-                              .collection('daily_stocks')
-                              .doc(_todayId());
-
-                          await _firestore
-                              .runTransaction((transaction) async {
-                            final stockSnap =
-                                await transaction.get(stockRef);
-
-                            double currentSold = 0;
-                            double totalAvailable = 0;
-
-                            if (stockSnap.exists) {
-                              final d = stockSnap.data()!;
-                              final morning =
-                                  (d['morningKg'] ?? 0) as num;
-                              final afternoon =
-                                  (d['afternoonKg'] ?? 0) as num;
-                              final leftover =
-                                  (d['previousLeftover'] ?? 0) as num;
-                              currentSold =
-                                  ((d['soldKg'] ?? 0) as num).toDouble();
-                              totalAvailable =
-                                  (morning + afternoon + leftover)
-                                      .toDouble();
+                            if (kgVal > remainingStock) {
+                              setDialog(() {
+                                errorMsg =
+                                    'Melebihi stok! Sisa ${_formatKg(remainingStock)}';
+                              });
+                              return;
                             }
 
-                            final currentRemaining =
-                                totalAvailable - currentSold;
+                            try {
+                              final stockRef = _firestore
+                                  .collection('daily_stocks')
+                                  .doc(_todayId());
 
-                            if (kgVal > currentRemaining) {
-                              throw Exception('Stok tidak mencukupi');
-                            }
+                              await _firestore
+                                  .runTransaction((transaction) async {
+                                final stockSnap =
+                                    await transaction.get(stockRef);
 
-                            final orderRef =
-                                _firestore.collection('orders').doc();
-                            transaction.set(orderRef, {
-                              'buyerName': buyerCtrl.text.trim(),
-                              'kg': kgVal,
-                              'pricePerKg': priceVal,
-                              'total': kgVal * priceVal,
-                              'isPaid': false,
-                              'dateTime':
-                                  DateTime.now().toIso8601String(),
-                            });
+                                double currentSold = 0;
+                                double totalAvailable = 0;
 
-                            if (stockSnap.exists) {
-                              transaction.update(stockRef, {
-                                'soldKg': currentSold + kgVal,
+                                if (stockSnap.exists) {
+                                  final d = stockSnap.data()!;
+                                  final morning =
+                                      (d['morningKg'] ?? 0) as num;
+                                  final afternoon =
+                                      (d['afternoonKg'] ?? 0) as num;
+                                  final leftover =
+                                      (d['previousLeftover'] ?? 0) as num;
+                                  currentSold =
+                                      ((d['soldKg'] ?? 0) as num)
+                                          .toDouble();
+                                  totalAvailable =
+                                      (morning + afternoon + leftover)
+                                          .toDouble();
+                                }
+
+                                final currentRemaining =
+                                    totalAvailable - currentSold;
+
+                                if (kgVal > currentRemaining) {
+                                  throw Exception('Stok tidak mencukupi');
+                                }
+
+                                final orderRef =
+                                    _firestore.collection('orders').doc();
+                                transaction.set(orderRef, {
+                                  'buyerName': buyerCtrl.text.trim(),
+                                  'kg': kgVal,
+                                  'pricePerKg': priceVal,
+                                  'total': kgVal * priceVal,
+                                  'isPaid': false,
+                                  'dateTime':
+                                      DateTime.now().toIso8601String(),
+                                });
+
+                                if (stockSnap.exists) {
+                                  transaction.update(stockRef, {
+                                    'soldKg': currentSold + kgVal,
+                                  });
+                                }
+                              });
+
+                              if (mounted) Navigator.pop(ctx);
+                            } catch (e) {
+                              setDialog(() {
+                                errorMsg =
+                                    'Stok tidak mencukupi, coba lagi';
                               });
                             }
-                          });
-
-                          if (mounted) Navigator.pop(ctx);
-                        } catch (e) {
-                          setDialog(() {
-                            errorMsg = 'Stok tidak mencukupi, coba lagi';
-                          });
-                        }
-                      },
-                child: Text('Buat Order',
-                    style:
-                        GoogleFonts.poppins(fontWeight: FontWeight.w600)),
-              ),
-            ],
+                          },
+                    child: Text('Buat Order',
+                        style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -658,7 +673,29 @@ class _OrderScreenState extends State<OrderScreen>
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) => _confirmDeleteOrder(context, order),
       onDismissed: (_) async {
-        await _firestore.collection('orders').doc(order.id).delete();
+        // Kurangi soldKg di daily_stocks saat order dihapus
+        final orderDate = order.dateTime;
+        final dateId =
+            '${orderDate.year}-${orderDate.month.toString().padLeft(2, '0')}-${orderDate.day.toString().padLeft(2, '0')}';
+
+        await _firestore.runTransaction((transaction) async {
+          final stockRef =
+              _firestore.collection('daily_stocks').doc(dateId);
+          final stockSnap = await transaction.get(stockRef);
+
+          if (stockSnap.exists) {
+            final currentSold =
+                ((stockSnap.data()!['soldKg'] ?? 0) as num).toDouble();
+            final newSold =
+                (currentSold - order.kg).clamp(0.0, double.infinity);
+            transaction.update(stockRef, {'soldKg': newSold});
+          }
+
+          final orderRef =
+              _firestore.collection('orders').doc(order.id);
+          transaction.delete(orderRef);
+        });
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -816,18 +853,35 @@ class _OrderScreenState extends State<OrderScreen>
           ),
         ],
       ),
-      // FAB hanya untuk owner
+      // FAB hanya untuk owner — pakai StreamBuilder agar stok selalu real-time
       floatingActionButton: widget.isReadOnly
           ? null
-          : FutureBuilder<double>(
-              future: _getRemainingStock(),
+          : StreamBuilder<DocumentSnapshot>(
+              stream: _firestore
+                  .collection('daily_stocks')
+                  .doc(_todayId())
+                  .snapshots(),
               builder: (context, snapshot) {
-                final remaining = snapshot.data ?? 0;
+                double remaining = 0;
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  final data =
+                      snapshot.data!.data() as Map<String, dynamic>;
+                  final morningKg = (data['morningKg'] ?? 0) as num;
+                  final afternoonKg = (data['afternoonKg'] ?? 0) as num;
+                  final previousLeftover =
+                      (data['previousLeftover'] ?? 0) as num;
+                  final soldKg = (data['soldKg'] ?? 0) as num;
+                  final totalAvailable =
+                      morningKg + afternoonKg + previousLeftover;
+                  remaining = (totalAvailable - soldKg)
+                      .clamp(0, double.infinity)
+                      .toDouble();
+                }
                 final hasStock = remaining > 0;
 
                 return FloatingActionButton.extended(
                   onPressed: hasStock
-                      ? () => _showAddOrderDialog(context, remaining)
+                      ? () => _showAddOrderDialog(context)
                       : () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
